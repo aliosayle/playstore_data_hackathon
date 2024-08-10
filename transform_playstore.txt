@@ -1,0 +1,120 @@
+import pandas as pd
+import numpy as np
+
+df_playstore=pd.read_csv('googleplaystore.csv')
+
+def clean_text(df):
+
+    df.columns = df.columns.str.lower()
+    str_columns = df.select_dtypes(include='object').columns
+    
+    for col in str_columns:
+        df[col] = df[col].str.lower().str.replace(' ', '_')
+    
+    return df
+
+def replace_dates_with_nan(value):
+    if isinstance(value, str):
+        cleaned_value = value.replace('_', ' ').replace(',', '')
+        try:
+            parsed_date = pd.to_datetime(cleaned_value, format='%B %d %Y', errors='raise')
+            return np.nan  
+        except ValueError:
+            return value
+    return value
+
+def convert_float(number, characters):
+    try:
+        for char in characters:
+            number = number.replace(char, '')
+        return float(number)
+    except ValueError:
+        return float('nan')
+
+def convert_column_to_float(df, column_name, characters):
+    df[column_name] = df[column_name].apply(lambda x: convert_float(x, characters))
+    return df
+
+def isFloat(str):
+    try:
+        float(str)
+        return True
+    except ValueError:
+        return False
+    
+def remove_digit(string):
+    if string.isdigit() or isFloat(string):
+        string=''
+    return string
+
+def normalize_and_encode_ratings(df,column_name):    
+    rating_labels = {
+        'unrated': 0,
+        'everyone': 1,
+        'everyone_10+': 2,
+        'teen': 3,
+        'mature_17+': 4,
+        'adults_only_18+': 5
+    }
+    df['rating_label'] = df[column_name].map(rating_labels).fillna(-1)
+    df['rating_label']=df['rating_label'].astype('int')
+    return df
+
+def clean_date(date_str):
+    try:
+        cleaned_date = date_str.replace('_', ' ').replace(',', '')
+        return pd.to_datetime(cleaned_date, format='%B %d %Y', errors='coerce')
+    except Exception as e:
+        print(f"Error processing date: {date_str} - {e}")
+        return pd.NaT 
+    
+def replace_dates_with_null(df, column, months_list):
+    months_list = [month.lower() for month in months_list]
+
+    def contains_month(value):
+        if isinstance(value, str):  
+            value_lower = value.lower()
+            for month in months_list:
+                if month in value_lower:
+                        return np.nan 
+        return value  
+                            
+    df[column] = df[column].apply(contains_month)
+                            
+    return df
+
+def map_type_in_place(df, type_col):
+    type_mapping = {'free': 0, 'paid': 1}
+    df[type_col] = df[type_col].map(type_mapping)
+
+def remove_duplicates(df):
+    df= df.drop_duplicates()
+    return df
+
+def create_app_id_column(df, app_name_col, new_id_col):
+    unique_app_names = df[app_name_col].unique()
+    app_id_mapping = {app_name: idx + 1 for idx, app_name in enumerate(unique_app_names)}
+    df[new_id_col] = df[app_name_col].map(app_id_mapping)
+    cols = [new_id_col] + [col for col in df.columns if col not in [new_id_col]]
+    df = df[cols]
+    return df
+
+
+
+def transform(df):
+    df_playstore=clean_text(df_playstore)
+    df_playstore = convert_column_to_float(df_playstore, 'price', ['$'])
+    df_playstore=convert_column_to_float(df_playstore,'size',['m'])
+    df_playstore=convert_column_to_float(df_playstore,'installs',[',','+'])
+    df_playstore=convert_column_to_float(df_playstore,'reviews',[])
+    df_playstore['category'] = df_playstore['category'].apply(remove_digit)
+    df_playstore['app']=df_playstore['app'].apply(remove_digit)
+    df_playstore['genres']=df_playstore['genres'].apply(remove_digit)
+    df_playstore=normalize_and_encode_ratings(df_playstore,'content rating')
+    df_playstore['last updated'] = df_playstore['last updated'].apply(clean_date)
+    df_playstore=replace_dates_with_null(df_playstore,'genres',months_list = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"])
+    map_type_in_place(df_playstore, 'type')
+    df_playstore.drop(df_playstore[df_playstore['type'] == '0'].index, inplace=True)
+    df_playstore=remove_duplicates(df_playstore)
+    df_playstore=create_app_id_column(df_playstore,'app','app_id')
+    return df
