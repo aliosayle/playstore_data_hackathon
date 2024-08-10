@@ -4,7 +4,7 @@ import os
 
 def predict_success(input_series):
     """
-    Predicts the success of an item based on the provided input features.
+    Predicts the success of an app based on the provided input features.
 
     This function loads a pre-trained model from a file, converts the input features
     into a DataFrame, and uses the model to make a prediction. The prediction is
