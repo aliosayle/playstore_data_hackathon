@@ -5,6 +5,7 @@ def predict_success(input_series):
     This function loads a pre-trained model from a file, converts the input features
     into a DataFrame, and uses the model to make a prediction. The prediction is
     returned as a percentage, representing the probability of success, increased by 10%.
+    Additionally, it returns tips on why the prediction might be low.
 
     Args:
         input_series (dict): A dictionary containing the features for prediction. The dictionary should include:
@@ -19,12 +20,13 @@ def predict_success(input_series):
             - 'sentiment' (int): The sentiment score related to the item.
 
     Returns:
-        float: The predicted probability of success of the item, as a percentage, increased by 10%.
+        tuple: A tuple containing the predicted probability of success of the item, as a percentage,
+               and a list of tips on why the prediction might be low.
     """
     import joblib
     import pandas as pd
     import os
-    
+
     # Load the saved model
     model_path = os.path.join('models', 'success_prediction_model.joblib')
     loaded_model = joblib.load(model_path)
@@ -42,7 +44,31 @@ def predict_success(input_series):
     adjusted_probability = success_probability + 10
 
     # Ensure the percentage does not exceed 100%
-    return min(adjusted_probability, 100)
+    adjusted_probability = min(adjusted_probability, 100)
+
+    # Analyze the input features and provide tips if the success probability is low
+    tips = []
+
+    if input_series['price'] > 0:
+        tips.append("Consider lowering the price or offering a free version to attract more users.")
+    
+    if input_series['sentiment'] < 60:
+        tips.append("Improve user sentiment by addressing negative reviews and enhancing the user experience.")
+
+    if input_series['size'] > 100000:
+        tips.append("The app size is large, which might discourage users from downloading it.")
+
+    if input_series['android ver'] != 'Varies with device' and input_series['android ver'] > '4.0':
+        tips.append("Consider supporting older Android versions to reach a broader audience.")
+
+    if input_series['genres'] not in ['Action', 'Puzzle', 'Casual', 'Strategy']:
+        tips.append(f"Consider focusing on popular genres. Current genre '{input_series['genres']}' might not be as appealing.")
+
+    # If the adjusted probability is less than 50%, provide a general tip
+    if adjusted_probability < 50:
+        tips.append("Overall success prediction is low. Consider re-evaluating the app's features and market strategy.")
+
+    return adjusted_probability, tips
 
 # Example usage
 input_series = {
@@ -57,4 +83,8 @@ input_series = {
     'sentiment': 50
 }
 
-print(predict_success(input_series))
+probability, tips = predict_success(input_series)
+print(f"Predicted Success Probability: {probability}%")
+print("Tips:")
+for tip in tips:
+    print(f"- {tip}")
