@@ -4,8 +4,8 @@ def predict_success(input_series):
 
     This function loads a pre-trained model from a file, converts the input features
     into a DataFrame, and uses the model to make a prediction. The prediction is
-    returned as a percentage, representing the probability of success, increased by 10%.
-    Additionally, it returns tips on why the prediction might be low.
+    returned as a percentage, representing the probability of success, with the percentage
+    increase based on the number of tips. Fewer tips lead to a higher percentage increase.
 
     Args:
         input_series (dict): A dictionary containing the features for prediction. The dictionary should include:
@@ -40,12 +40,6 @@ def predict_success(input_series):
     # Get the probability of the positive class (success) as a percentage
     success_probability = predictions[0][1] * 100
 
-    # Increase the percentage by 10%
-    adjusted_probability = success_probability + 10
-
-    # Ensure the percentage does not exceed 100%
-    adjusted_probability = min(adjusted_probability, 100)
-
     # Analyze the input features and provide tips if the success probability is low
     tips = []
 
@@ -63,6 +57,25 @@ def predict_success(input_series):
 
     if input_series['genres'] not in ['Action', 'Puzzle', 'Casual', 'Strategy']:
         tips.append(f"Consider focusing on popular genres. Current genre '{input_series['genres']}' might not be as appealing.")
+
+    # Determine the percentage increase based on the number of tips
+    num_tips = len(tips)
+    if num_tips == 0:
+        increase_percentage = 15  # Higher increase if no tips
+    elif num_tips == 1:
+        increase_percentage = 10
+    elif num_tips == 2:
+        increase_percentage = 7.5
+    elif num_tips == 3:
+        increase_percentage = 5
+    else:
+        increase_percentage = 2.5  # Smaller increase if there are many tips
+
+    # Increase the percentage based on the calculated percentage
+    adjusted_probability = success_probability + increase_percentage
+
+    # Ensure the percentage does not exceed 100%
+    adjusted_probability = min(adjusted_probability, 100)
 
     # If the adjusted probability is less than 50%, provide a general tip
     if adjusted_probability < 50:
